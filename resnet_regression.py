@@ -3,7 +3,6 @@
 
 import numpy as np
 from tensorflow import keras
-from tensorflow.keras import layers
 
 # Let's say each of your images is 224x224 and you have RGB color channels.
 input_shape = (224, 224, 3)

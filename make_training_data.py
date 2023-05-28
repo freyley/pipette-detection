@@ -120,8 +120,10 @@ def make_test_data(shape, template):
     )
 
     # add in pipette template
-    z_um = template.add_to_image(z=None, dst_arr=image, pip_pos=pip_pos, amp=10**np.random.normal(loc=0.2, scale=0.2))
-    
+    z_um = template.add_to_image(z=0, dst_arr=image, pip_pos=pip_pos, amp=10**np.random.normal(loc=0.2, scale=0.2))
+
+    image -= image.min()
+    image /= image.max()
     return image, (z_um, pip_pos[0], pip_pos[1])
 
 
