@@ -12,6 +12,8 @@ https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.
 # install docker and GPU support
 sudo apt install docker.io nvidia-container-toolkit
 
+# Make sure you are in the docker group!
+
 # grab latest tensorflow image
 docker pull tensorflow/tenstorflow:latest-gpu-jupyter
 
