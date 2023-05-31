@@ -24,7 +24,7 @@ class PipetteTemplate:
             ind = np.argmin(np.abs(self.z - z))
         return self.image[ind], np.array((self.z[ind],) + tuple(self.pos))
 
-    def add_to_image(self, z, dst_arr, pip_pos, amp=1):
+    def add_to_image(self, z, dst_arr, pip_pos, amp=1, z_range=None):
         """Add pipette template z to *dst_arr* such that the tip is at *pip_pos* (row, col), 
         ignoring non-overlapping areas.
         
@@ -86,24 +86,26 @@ def make_structured_noise(shape, edge, edge_frac, noise_radii, noise_amplitudes,
     return noise
 
 
-def make_test_data(shape, template):
-#     pip_pos = [
-#         np.random.randint(10 - (template.shape[1] - template.pos[0])//2, shape[0] + template.pos[0]//2),
-#         np.random.randint(10 - (template.shape[2] - template.pos[1])//2, shape[1] + template.pos[1]//2),
-#     ]
+def make_training_data(shape:tuple, template:PipetteTemplate, difficulty:float):
+    radius = shape[0] * (0.3 + difficulty * 0.1)
+    center = np.array(shape) // 2
     pip_pos = [
-        np.random.randint(shape[0]//4, shape[0]*3//4),
-        np.random.randint(shape[1]//4, shape[1]*3//4),
+        int(np.random.normal(loc=center[0], scale=radius)),
+        int(np.random.normal(loc=center[1], scale=radius)),
     ]
     
-    # structured noise to look like cells / neuropil
+    # scale noise with difficulty^2 so that smaller values primarily 
+    # differ in z range rather than noise
+    noise_amp = -1 + difficulty**2 * 1.5 
+
+    # structured noise to look like cells / neuropil    
     str_noise_len = 3
     image = make_structured_noise(
         shape=shape,
         edge=np.random.normal(size=2, scale=3), 
         edge_frac=np.random.normal(scale=0.2, loc=1), 
         noise_radii=np.random.uniform(1, 50, size=str_noise_len), 
-        noise_amplitudes=10**np.random.normal(size=str_noise_len, loc=-0.4, scale=0.2),
+        noise_amplitudes=10**np.random.normal(size=str_noise_len, loc=noise_amp, scale=0.2),
         sin_shift=np.random.uniform(0.05, 0.3),
         noise_exponent=2,
     )
@@ -111,7 +113,7 @@ def make_test_data(shape, template):
     # unstructured noise at various scales
     image += make_noise(
         shape=shape,
-        amplitudes=10**np.random.normal(size=3, loc=-0.4, scale=0.2),
+        amplitudes=10**np.random.normal(size=3, loc=noise_amp, scale=0.2),
         radii=[
             np.random.normal(loc=100, scale=30),
             np.random.normal(loc=10, scale=3),
@@ -120,16 +122,20 @@ def make_test_data(shape, template):
     )
 
     # add in pipette template
-    z_um = template.add_to_image(z=0, dst_arr=image, pip_pos=pip_pos, amp=10**np.random.normal(loc=0.2, scale=0.2))
+    z_difficulty = difficulty**0.5
+    z_range = (template.z.min() * z_difficulty, template.z.max() * z_difficulty)
+    z_target = np.random.random() * (z_range[1] - z_range[0]) + z_range[0]
+    z_um = template.add_to_image(z=z_target, dst_arr=image, pip_pos=pip_pos, amp=10**np.random.normal(loc=0.2, scale=0.2))
 
+    # normalize image
     image -= image.min()
     image /= image.max()
+
     return image, (z_um, pip_pos[0], pip_pos[1])
 
 
 def save_training_data(path, image, pip_pos):
-    image -= image.min()
-    image = Image.fromarray(image*255/image.max()).convert('RGB')
+    image = Image.fromarray(image*255).convert('RGB')
     img_file = os.path.join(path, f'{i:05d}.jpg')
     image.save(img_file)
     with open(os.path.join(path, 'pos.csv'), 'a') as pos_fh:
@@ -150,7 +156,7 @@ class TrainingDataGenerator:
 
     def run(self):
         while self.running:
-            data = make_test_data(**self.data_args)
+            data = make_training_data(**self.data_args)
             self.queue.put(data)
 
 
@@ -159,6 +165,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate pipette detection training data files')
     parser.add_argument('--path', type=str, help='path to store training data')
     parser.add_argument('--size', type=int, help='number of training examples to generate')
+    parser.add_argument('--difficulty', type=float, help='difficulty (0-1) controls signal/noise ratio, pipette focus and positioning')
     args = parser.parse_args()
 
     template = PipetteTemplate('yip_2019_template.npz')
@@ -167,6 +174,7 @@ if __name__ == '__main__':
     training_data_args = {
         'shape': (500, 500),
         'template': template,
+        'difficulty': args.difficulty,
     }
     threads = [TrainingDataGenerator(queue, training_data_args) for i in range(8)]
 
