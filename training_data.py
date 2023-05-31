@@ -1,4 +1,4 @@
-import os
+import os, threading, queue
 import numpy as np
 from PIL import Image
 
@@ -33,11 +33,38 @@ class TrainingData:
         return img, (z, row, col)
     
     def generator(self, batch_size):
+        preloader = Preloader(self, batch_size)
+        try:
+            while True:
+                next_data = preloader.get_next()
+                if next_data is None:
+                    return
+                img, pos = next_data
+                yield (img, pos / self.image_shape[0])
+        finally:
+            preloader.close()
+
+
+class Preloader:
+    def __init__(self, data, batch_size):
+        self.data = data
+        self.batch_size = batch_size
+        self.queue = queue.Queue(maxsize=3)
+        self.running = True
+        self.thread = threading.Thread(target=self.preload, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.running = False
+        while not self.queue.empty():
+            self.queue.get()
+
+    def preload(self):
         index = 0
-        while index < len(self):
-            img, pos = self[index:index+batch_size]
-            if len(img) < batch_size:
-                index = 0
-                continue
-            yield (img, pos / self.image_shape[0])
-            index += batch_size
+        while self.running and index < len(self.data):
+            self.queue.put(self.data[index:index+self.batch_size])
+            index += self.batch_size
+        self.queue.put(None)
+
+    def get_next(self):
+        return self.queue.get()
