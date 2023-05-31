@@ -24,22 +24,21 @@ class PipetteTemplate:
             ind = np.argmin(np.abs(self.z - z))
         return self.image[ind], np.array((self.z[ind],) + tuple(self.pos))
 
-    def add_to_image(self, z, dst_arr, pip_pos, amp=1, z_range=None):
+    def add_to_image(self, z, dst_arr, pip_pos, amp=1):
         """Add pipette template z to *dst_arr* such that the tip is at *pip_pos* (row, col), 
         ignoring non-overlapping areas.
         
-        Return chosen Z position, or None if no data could be copied (no overlap).
+        Return chosen Z position.
         """
         template_arr, (template_z_um, template_row, template_col) = self.get_image(z)
         offset = np.array(pip_pos) - [template_row, template_col]
         
         dst_rgn = np.array([offset, np.array(offset) + template_arr.shape])
         dst_rgn = np.clip(dst_rgn, 0, dst_arr.shape)
-        if np.any(dst_rgn[0] >= dst_rgn[1]):
-            return None
-        src_rgn = dst_rgn - offset
-        src_subrgn = template_arr[src_rgn[0,0]:src_rgn[1,0], src_rgn[0,1]:src_rgn[1,1]]
-        dst_arr[dst_rgn[0,0]:dst_rgn[1,0], dst_rgn[0,1]:dst_rgn[1,1]] += src_subrgn * amp
+        if np.all(dst_rgn[0] < dst_rgn[1]):
+            src_rgn = dst_rgn - offset
+            src_subrgn = template_arr[src_rgn[0,0]:src_rgn[1,0], src_rgn[0,1]:src_rgn[1,1]]
+            dst_arr[dst_rgn[0,0]:dst_rgn[1,0], dst_rgn[0,1]:dst_rgn[1,1]] += src_subrgn * amp
         
         return template_z_um
 
