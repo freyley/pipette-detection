@@ -6,6 +6,8 @@ $ nvidia-smi
 +-----------------------------------------------------------------------------+
 | NVIDIA-SMI 520.61.05    Driver Version: 520.61.05    CUDA Version: 11.8     |
 
+# See nvidia docs for setting up apt repo for nvidia-container-toolkit
+https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit
 
 # install docker and GPU support
 sudo apt install docker.io nvidia-container-toolkit
