@@ -4,11 +4,10 @@ channels:
 dependencies:
   - python=3.8
   - pip
-  - cudatoolkit=11.2 
-  - cudnn=8.1.0
   - pip:
     - numpy
     - scipy
     - matplotlib
     - jupyter
     - tqdm
+    - tensorflow
