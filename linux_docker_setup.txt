@@ -1,0 +1,29 @@
+
+# For Linux!
+
+# make sure we are running cuda vertion 11 (requires nvidia driver < 525)
+$ nvidia-smi
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 520.61.05    Driver Version: 520.61.05    CUDA Version: 11.8     |
+
+
+# install docker and GPU support
+sudo apt install docker.io nvidia-container-toolkit
+
+# grab latest tensorflow image
+docker pull tensorflow/tenstorflow:latest-gpu-jupyter
+
+# start image running jupyter
+docker run --gpus all -it -p 8888:8888 -v pipette_detection:/tf/pipette_detection latest-gpu-jupyter
+
+
+# optional: modify docker image and create a new one
+[ from jupyter:
+  !pip install tqdm
+  download model weights ]
+use docker ps to get running container ID
+docker commit -p <container_id> tensorflow_pipette_detection
+docker run --gpus all -it -p 8888:8888 -v pipette_detection:/tf/pipette_detection tensorflow-pipette-detection
+
+
+
