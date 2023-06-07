@@ -4,8 +4,14 @@ from PIL import Image
 
 
 class TrainingData:
-    def __init__(self, data_path):
+    def __init__(self, data_path=None, output_norm=None):
         self.data_path = data_path
+        self.output_norm = output_norm
+
+        if data_path is not None:
+            self.load(data_path)
+
+    def load(self, data_path):
         self.index = []
         fh = open(os.path.join(data_path, 'pos.csv'))
         for line in fh.readlines():
@@ -30,7 +36,10 @@ class TrainingData:
             return self.__getslice__(item)
         img_file, z, row, col = self.index[item]
         img = np.asarray(Image.open(img_file)) / 255
-        return img, (z, row, col)
+        pos = np.array([z, row, col])
+        if self.output_norm is not None:
+            pos = self.output_norm(pos)
+        return img, pos
     
     def generator(self, batch_size):
         preloader = Preloader(self, batch_size)
@@ -43,6 +52,32 @@ class TrainingData:
                 yield (img, pos / self.image_shape[0])
         finally:
             preloader.close()
+
+    def split(self, proportions):
+        start = 0
+        parts = []
+        for p in proportions:
+            stop = start + int(len(self) * p)
+            part = TrainingData(output_norm=self.output_norm)
+            part.index = self.index[start:stop]
+            part.image_shape = self.image_shape
+            start = stop
+            parts.append(part)
+        return parts
+
+
+class Normalizer:
+    def __init__(self, range):
+        range = np.array(range)
+        diff = range[1] - range[0]
+        self.scale = 2 / diff
+        self.offset = range[0] + diff / 2
+
+    def normalize(self, x):
+        return (x - self.offset) * self.scale
+
+    def denormalize(self, x):
+        return (x / self.scale) + self.offset
 
 
 class Preloader:
@@ -61,10 +96,17 @@ class Preloader:
 
     def preload(self):
         index = 0
-        while self.running and index < len(self.data):
-            self.queue.put(self.data[index:index+self.batch_size])
-            index += self.batch_size
+        while self.running:
+            stop = index + self.batch_size
+            if stop > len(self.data):
+                index = 0
+                stop = index + self.batch_size
+            chunk = self.data[index:stop]
+            index = stop
+            self.queue.put(chunk)
         self.queue.put(None)
 
     def get_next(self):
+        if self.queue.empty():
+            print("Warning: preloader queue is empty (this can slow down training)")
         return self.queue.get()
