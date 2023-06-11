@@ -86,7 +86,7 @@ def make_structured_noise(shape, edge, edge_frac, noise_radii, noise_amplitudes,
 
 
 def make_training_data(shape:tuple, template:PipetteTemplate, difficulty:float):
-    radius = shape[0] * (0.3 + difficulty * 0.1)
+    radius = shape[0] * (0.1 + difficulty * 0.3)
     center = np.array(shape) // 2
     pip_pos = [
         int(np.random.normal(loc=center[0], scale=radius)),
@@ -95,7 +95,7 @@ def make_training_data(shape:tuple, template:PipetteTemplate, difficulty:float):
     
     # scale noise with difficulty^2 so that smaller values primarily 
     # differ in z range rather than noise
-    noise_amp = -1 + difficulty**2 * 1.5 
+    noise_amp = -2 + difficulty**2 * 2.5 
 
     # structured noise to look like cells / neuropil    
     str_noise_len = 3
@@ -135,8 +135,8 @@ def make_training_data(shape:tuple, template:PipetteTemplate, difficulty:float):
 
 def save_training_data(path, image, pip_pos):
     image = Image.fromarray(image*255).convert('RGB')
-    img_file = os.path.join(path, f'{i:05d}.jpg')
-    image.save(img_file)
+    img_file = f'{i:05d}.jpg'
+    image.save(os.path.join(path, img_file))
     with open(os.path.join(path, 'pos.csv'), 'a') as pos_fh:
         pos_fh.write(f'{img_file},{pip_pos[0]:0.2f},{pip_pos[1]:d},{pip_pos[2]:d}\n')
 
