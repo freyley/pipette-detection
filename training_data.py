@@ -48,6 +48,7 @@ class TrainingData:
                 next_data = preloader.get_next()
                 if next_data is None:
                     return
+                self.last_batch = next_data
                 yield next_data
         finally:
             preloader.close()
