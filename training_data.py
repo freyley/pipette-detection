@@ -7,6 +7,7 @@ class TrainingData:
     def __init__(self, data_path=None, output_norm=None):
         self.data_path = data_path
         self.output_norm = output_norm
+        self.last_batch = None
 
         if data_path is not None:
             self.load(data_path)
