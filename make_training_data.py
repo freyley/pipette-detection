@@ -1,4 +1,9 @@
-import os, argparse, threading, queue
+import argparse
+import os
+import threading
+from queue import Queue
+from typing import Tuple
+
 import numpy as np
 import scipy.ndimage
 from PIL import Image
@@ -85,7 +90,7 @@ def make_structured_noise(shape, edge, edge_frac, noise_radii, noise_amplitudes,
     return noise
 
 
-def make_training_data(shape:tuple, template:PipetteTemplate, difficulty:float):
+def make_training_data(shape:Tuple[float], template:PipetteTemplate, difficulty:float):
     radius = shape[0] * (0.1 + difficulty * 0.3)
     center = np.array(shape) // 2
     pip_pos = [
@@ -133,9 +138,10 @@ def make_training_data(shape:tuple, template:PipetteTemplate, difficulty:float):
     return image, (z_um, pip_pos[0], pip_pos[1])
 
 
-def save_training_data(path, image, pip_pos):
+def save_training_data(path, img_count, image, pip_pos):
+    assert os.path.exists(path), f"'{path}' directory expected to exist"
     image = Image.fromarray(image*255).convert('RGB')
-    img_file = f'{i:05d}.jpg'
+    img_file = f'{img_count:05d}.jpg'
     image.save(os.path.join(path, img_file))
     with open(os.path.join(path, 'pos.csv'), 'a') as pos_fh:
         pos_fh.write(f'{img_file},{pip_pos[0]:0.2f},{pip_pos[1]:d},{pip_pos[2]:d}\n')
@@ -162,21 +168,18 @@ class TrainingDataGenerator:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate pipette detection training data files')
-    parser.add_argument('--path', type=str, help='path to store training data')
-    parser.add_argument('--size', type=int, help='number of training examples to generate')
-    parser.add_argument('--difficulty', type=float, help='difficulty (0-1) controls signal/noise ratio, pipette focus and positioning')
+    parser.add_argument('--path', default="training", type=str, help='path to store training data')
+    parser.add_argument('--size', default=1, type=int, help='number of training examples to generate')
+    parser.add_argument('--difficulty', default=0, type=float, help='difficulty (0-1) controls signal/noise ratio, pipette focus and positioning')
     args = parser.parse_args()
 
-    template = PipetteTemplate('yip_2019_template.npz')
-
-    queue = queue.Queue(20)
+    training_data_queue = Queue(20)
     training_data_args = {
         'shape': (500, 500),
-        'template': template,
+        'template': PipetteTemplate('yip_2019_template.npz'),
         'difficulty': args.difficulty,
     }
-    threads = [TrainingDataGenerator(queue, training_data_args) for i in range(8)]
+    threads = [TrainingDataGenerator(training_data_queue, training_data_args) for _ in range(8)]
 
     for i in tqdm(range(args.size)):
-        data = queue.get()
-        save_training_data(args.path, *data)
+        save_training_data(args.path, i, *training_data_queue.get())
