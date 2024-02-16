@@ -1,3 +1,4 @@
+name: pipette-detection
 channels:
   - conda-forge
   - defaults
@@ -13,3 +14,6 @@ dependencies:
     - jupyter
     - jupyter-client==7.3.2  # latest 8.0.2 has problems: https://discourse.jupyter.org/t/jupyter-notebook-zmq-message-arrived-on-closed-channel-error/17869/7
     - tornado==6.1
+    - torch==2.2.0
+    - torchvision==0.17.0
+    - pillow=10.2.0
