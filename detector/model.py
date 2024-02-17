@@ -60,3 +60,14 @@ def get_effnet_detector():
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, 3)
     return model
 
+def load_model_weights(model, filename):
+    if os.path.isfile(filename):
+        model.load_state_dict(torch.load(filename))
+        print("Loaded model weights from:", filename)
+    else:
+        print("No weights file found.")
+    return model
+
+def save_model_weights(model, filename):
+    torch.save(model.state_dict(), filename)
+

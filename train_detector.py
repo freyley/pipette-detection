@@ -7,13 +7,14 @@
 #       best loss gets saved
 #       change learning rate as loss changes
 # 4.  show loss on a log scale
-from detector.model import get_effnet_detector
+from detector.model import get_effnet_detector, load_model_weights, save_model_weights
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import click
+import os
 
 def __train(model, loader, criterion, optimizer, device):
     model.train()  # Set the model to training mode
@@ -45,7 +46,11 @@ def get_optimizer(loss, model):
         lr = 0.01
     else:
         lr = 0.001
-    return torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam([
+        {'params': model.classifier[1].parameters(), 'lr': lr}, # Higher learning rate for the new output layer
+        {'params': model.features[0][0].parameters(), 'lr': lr},
+    ], lr=1e-4)  # Default learning rate, in case there are parameters not included in any group
+    return optimizer
 
 def display_losses(losses):
     plt.figure(figsize=(10, 6))  # Set the figure size
@@ -58,21 +63,6 @@ def display_losses(losses):
     ax.legend()
     plt.show()
 
-import os
-
-def load_model_weights(model, filename):
-    if os.path.isfile(filename):
-        model.load_state_dict(torch.load(filename))
-        print("Loaded model weights from:", filename)
-    else:
-        print("No weights file found, starting training from scratch.")
-    return model
-
-def save_model_weights(model, filename):
-    torch.save(model.state_dict(), filename)
-
-
-MODEL_LOCATIONS = {'effnet1': 'weights/effnet1.pth'}
 
 
 @click.command()
@@ -83,9 +73,9 @@ MODEL_LOCATIONS = {'effnet1': 'weights/effnet1.pth'}
 @click.option('--epochs', default=25, help='Epochs')
 @click.option('--model-name', default='effnet1', help='Model to work with')
 def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name):
-    # TODO: read data from checkpoint
     model = get_effnet_detector()
-    model = load_model_weights(model, MODEL_LOCATIONS[model_name])
+    model_loc = f'weights/{model_name}.pth'
+    model = load_model_weights(model, model_loc)
 
     from detector.loader import JITDataset, FileDataset
     if train_jit:
@@ -94,8 +84,9 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name):
         dataset = FileDataset(img_dir=training_dir)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
+    # start with a low learning rate optimizer because we don't know how far we are
+    # in training
+    optimizer = get_optimizer(1, model)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     losses = []
@@ -106,9 +97,12 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name):
         # probably don't need to do this _every_ time...
         optimizer = get_optimizer(loss, model)
 
-    save_model_weights(model, MODEL_LOCATIONS[model_name])
+        # checkpoint frequently on big training runs
+        if epochs > 500 and epoch % 100 == 0:
+            save_model_weights(model, model_loc)
 
-    # TODO: write the data to a checkpoint
+    save_model_weights(model, model_loc)
+
     display_losses(losses)
 
 if __name__ == '__main__':
