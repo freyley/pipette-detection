@@ -1,0 +1,5 @@
+pretrained, effnet-mid, with frozen middle, difficulty 0.1
+pretrained, effnet-mid, with reduced middle, difficulty 0.1
+non-pretrained, effnet, with uniform learning rate, difficulty 0.1
+pretrained, vision transformer, with frozen middle, difficulty 0.1
+pretrained, vision transformer, with uniform learning rate, difficulty 0.1
