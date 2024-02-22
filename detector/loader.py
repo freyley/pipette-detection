@@ -8,7 +8,7 @@ from PIL import Image
 from make_training_data import make_training_data, PipetteTemplate
 
 TRANSFORMS = transforms.Compose([
-    transforms.Grayscale(),  # Converts to grayscale
+    #transforms.Grayscale(),  # Converts to grayscale # not doing that anymore
     transforms.Resize((500, 500)),  # Ensures image is 500x500
     transforms.ToTensor(),  # Converts to tensor
 ])

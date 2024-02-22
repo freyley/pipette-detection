@@ -8,7 +8,7 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import efficientnet_v2_s, EfficientNet_V2_S_Weights
+from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
 
 
 class Detector(nn.Module):
@@ -45,20 +45,27 @@ ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=ce
 def get_detector():
     return Detector()
 
-def get_effnet_detector():
+def get_effnet_detector(no_pretrained=False):
     # Load the pretrained model
-    weights = EfficientNet_V2_S_Weights.DEFAULT
-    model = efficientnet_v2_s(weights=weights)
+    if no_pretrained:
+        model = efficientnet_v2_m()
+    else:
+        weights = EfficientNet_V2_M_Weights.DEFAULT
+        model = efficientnet_v2_m(weights=weights)
 
     # Adjust the first convolutional layer for 1-channel grayscale input
-    first_conv_layer = model.features[0][0]
-    model.features[0][0] = nn.Conv2d(1, first_conv_layer.out_channels,
-                                     kernel_size=first_conv_layer.kernel_size, stride=first_conv_layer.stride,
-                                     padding=first_conv_layer.padding, bias=False)
-
+    # first_conv_layer = model.features[0][0]
+    # model.features[0][0] = nn.Conv2d(1, first_conv_layer.out_channels,
+    #                                  kernel_size=first_conv_layer.kernel_size, stride=first_conv_layer.stride,
+    #                                  padding=first_conv_layer.padding, bias=False)
+    #
     # Change the output layer to produce 3 float outputs
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, 3)
     return model
+
+def get_vt_detector(no_pretrained=False):
+    pass
+    return 1
 
 def load_model_weights(model, filename):
     if os.path.isfile(filename):

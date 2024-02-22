@@ -7,7 +7,7 @@
 #       best loss gets saved
 #       change learning rate as loss changes
 # 4.  show loss on a log scale
-from detector.model import get_effnet_detector, load_model_weights, save_model_weights
+from detector.model import get_effnet_detector, get_vt_detector, load_model_weights, save_model_weights
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -39,17 +39,21 @@ def __train(model, loader, criterion, optimizer, device):
         count += 1  # Increment count for each batch
     return running_loss / count
 
-def get_optimizer(loss, model):
-    if loss > 10000:
-        lr = 0.1
-    elif loss > 1000:
-        lr = 0.01
+def get_optimizer(loss, model, frozen=False, no_pretrained=False):
+    if frozen:
+        default_lr = 0
     else:
-        lr = 0.001
-    optimizer = torch.optim.Adam([
-        {'params': model.classifier[1].parameters(), 'lr': lr}, # Higher learning rate for the new output layer
-        {'params': model.features[0][0].parameters(), 'lr': lr},
-    ], lr=1e-4)  # Default learning rate, in case there are parameters not included in any group
+        default_lr = 1e-7
+    if loss > 1000:
+        lr = 1e-3
+    else:
+        lr = 1e-5
+    if no_pretrained:
+        optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+    else:
+        optimizer = torch.optim.Adam([
+            {'params': model.classifier[1].parameters(), 'lr': lr}, # Higher learning rate for the new output layer
+        ], lr=default_lr)  # Default learning rate, in case there are parameters not included in any group
     return optimizer
 
 def display_losses(losses):
@@ -69,11 +73,16 @@ def display_losses(losses):
 @click.option('--batch-size', default=10, help='Batch size')
 @click.option('--training_dir', default='./train', help='Directory to pull training files from')
 @click.option('--train-jit', is_flag=True, help='Use the JIT training')
-@click.option('--difficulty', default=0.6, help='JIT difficulty')
-@click.option('--epochs', default=25, help='Epochs')
-@click.option('--model-name', default='effnet1', help='Model to work with')
-def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name):
-    model = get_effnet_detector()
+@click.option('--difficulty', default=0.3, help='JIT difficulty')
+@click.option('--epochs', default=10, help='Epochs')
+@click.option('--model-name', help='Model to work with')
+@click.option('--frozen', is_flag=True, help="Freeze early layers")
+@click.option('--no-pretrained', is_flag=True, help="Don't use pretrained weights")
+def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained):
+    if 'effnet' in model_name:
+        model = get_effnet_detector(no_pretrained)
+    elif 'vt' in model_name:
+        model = get_vt_detector(no_pretrained)
     model_loc = f'weights/{model_name}.pth'
     model = load_model_weights(model, model_loc)
 
@@ -86,7 +95,7 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name):
     criterion = nn.MSELoss()
     # start with a low learning rate optimizer because we don't know how far we are
     # in training
-    optimizer = get_optimizer(1, model)
+    optimizer = get_optimizer(1, model, frozen=frozen, no_pretrained=no_pretrained)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     losses = []
@@ -95,7 +104,7 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name):
         loss = __train(model, loader, criterion, optimizer, device)
         losses.append(loss)
         # probably don't need to do this _every_ time...
-        optimizer = get_optimizer(loss, model)
+        optimizer = get_optimizer(loss, model, frozen=frozen, no_pretrained=no_pretrained)
 
         # checkpoint frequently on big training runs
         if epochs > 500 and epoch % 100 == 0:
