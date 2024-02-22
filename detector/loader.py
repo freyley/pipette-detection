@@ -2,23 +2,16 @@ import csv
 
 import torch
 import os
-from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 from make_training_data import make_training_data, PipetteTemplate
 
-TRANSFORMS = transforms.Compose([
-    #transforms.Grayscale(),  # Converts to grayscale # not doing that anymore
-    transforms.Resize((500, 500)),  # Ensures image is 500x500
-    transforms.ToTensor(),  # Converts to tensor
-])
-
 
 class JITDataset(Dataset):
-    def __init__(self, length=1000, difficulty=0):
+    def __init__(self, transform, length=1000, difficulty=0):
         self.length = length
         self.difficulty=difficulty
-        self.transform = TRANSFORMS
+        self.transform = transform
 
     def __len__(self):
         return self.length
@@ -53,9 +46,9 @@ def csv_to_dict(csv_filepath):
 
 
 class FileDataset(Dataset):
-    def __init__(self, img_dir):
+    def __init__(self, img_dir, transform):
         self.img_dir = img_dir
-        self.transform = TRANSFORMS
+        self.transform = transform
         self.img_names = list(filter(lambda x: x.endswith('.jpg'), os.listdir(img_dir)))
         self.points_dict = csv_to_dict(os.path.join(self.img_dir, 'pos.csv'))
 

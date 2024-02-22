@@ -8,7 +8,7 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
+from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights, vit_b_16
 
 
 class Detector(nn.Module):
@@ -61,11 +61,21 @@ def get_effnet_detector(no_pretrained=False):
     #
     # Change the output layer to produce 3 float outputs
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, 3)
+    model.get_last_layer = lambda: model.classifier[1]
     return model
 
 def get_vt_detector(no_pretrained=False):
-    pass
-    return 1
+    if no_pretrained:
+        model = vit_b_16()
+    else:
+        model = vit_b_16(weights='DEFAULT')
+
+    final_layer = list(model.heads.children())[-1]
+
+    num_features = final_layer.in_features
+    model.heads[-1] = nn.Linear(num_features, 3)
+    model.get_last_layer = lambda: model.heads[-1]
+    return model
 
 def load_model_weights(model, filename):
     if os.path.isfile(filename):

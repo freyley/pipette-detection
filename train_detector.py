@@ -15,6 +15,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import click
 import os
+from torchvision import transforms
 
 def __train(model, loader, criterion, optimizer, device):
     model.train()  # Set the model to training mode
@@ -52,7 +53,7 @@ def get_optimizer(loss, model, frozen=False, no_pretrained=False):
         optimizer = torch.optim.Adam(model.parameters(),lr=lr)
     else:
         optimizer = torch.optim.Adam([
-            {'params': model.classifier[1].parameters(), 'lr': lr}, # Higher learning rate for the new output layer
+            {'params': model.get_last_layer().parameters(), 'lr': lr}, # Higher learning rate for the new output layer
         ], lr=default_lr)  # Default learning rate, in case there are parameters not included in any group
     return optimizer
 
@@ -81,16 +82,32 @@ def display_losses(losses):
 def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained):
     if 'effnet' in model_name:
         model = get_effnet_detector(no_pretrained)
+        transform = transforms.Compose([
+            # transforms.Grayscale(),  # Converts to grayscale # not doing that anymore
+            transforms.Resize((500, 500)),  # Ensures image is 500x500
+            transforms.ToTensor(),  # Converts to tensor
+        ])
+
     elif 'vt' in model_name:
         model = get_vt_detector(no_pretrained)
+        transform = transforms.Compose([
+            transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels, VTs don't support 500x500
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+    else:
+        print("Unknown model! vt or effnet only so far!")
+        import sys
+        sys.exit()
+
     model_loc = f'weights/{model_name}.pth'
     model = load_model_weights(model, model_loc)
 
     from detector.loader import JITDataset, FileDataset
     if train_jit:
-        dataset = JITDataset(length=100, difficulty=difficulty)
+        dataset = JITDataset(transform, length=100, difficulty=difficulty)
     else:
-        dataset = FileDataset(img_dir=training_dir)
+        dataset = FileDataset(img_dir=training_dir, transform=transform)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     criterion = nn.MSELoss()
     # start with a low learning rate optimizer because we don't know how far we are
