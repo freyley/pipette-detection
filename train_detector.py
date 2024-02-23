@@ -95,11 +95,12 @@ def get_transform_for_model(model_name: str):
 @click.option('--model-name', help='Model to work with')
 @click.option('--frozen', is_flag=True, help="Freeze early layers")
 @click.option('--no-pretrained', is_flag=True, help="Don't use pretrained weights")
-def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained):
+@click.option('--size', default=None, help="model size - m or l for effnet, b16, l16, l32 for vt")
+def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained, size):
     if 'effnet' in model_name:
-        model = get_effnet_detector(no_pretrained)
+        model = get_effnet_detector(no_pretrained, size)
     elif 'vt' in model_name:
-        model = get_vt_detector(no_pretrained)
+        model = get_vt_detector(no_pretrained, size)
     else:
         print("Unknown model! vt or effnet only so far!")
         import sys

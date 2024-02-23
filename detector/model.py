@@ -8,7 +8,10 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights, vit_b_16
+from torchvision.models import (
+    efficientnet_v2_m, vit_b_16,
+    efficientnet_v2_l, vit_l_16, vit_l_32,
+)
 
 
 class Detector(nn.Module):
@@ -45,13 +48,16 @@ ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=ce
 def get_detector():
     return Detector()
 
-def get_effnet_detector(no_pretrained=False):
+def get_effnet_detector(no_pretrained=False, size=None):
     # Load the pretrained model
+    if size is None or size in ('medium', 'm'):
+        modelClass = efficientnet_v2_m
+    elif size in ('large', 'l'):
+        modelClass = efficientnet_v2_l
     if no_pretrained:
-        model = efficientnet_v2_m()
+        model = modelClass()
     else:
-        weights = EfficientNet_V2_M_Weights.DEFAULT
-        model = efficientnet_v2_m(weights=weights)
+        model = modelClass(weights="DEFAULT")
 
     # Adjust the first convolutional layer for 1-channel grayscale input
     # first_conv_layer = model.features[0][0]
@@ -64,11 +70,18 @@ def get_effnet_detector(no_pretrained=False):
     model.get_last_layer = lambda: model.classifier[1]
     return model
 
-def get_vt_detector(no_pretrained=False):
+def get_vt_detector(no_pretrained=False, size=None):
+    if size is None or size in ('b16', 'b_16'):
+        modelClass = vit_b_16
+    elif size in ('l16', 'l_16'):
+        modelClass = vit_l_16
+    elif size in ('l32', 'l_32'):
+        modelClass = vit_l_32
+
     if no_pretrained:
-        model = vit_b_16()
+        model = modelClass()
     else:
-        model = vit_b_16(weights='DEFAULT')
+        model = modelClass(weights='DEFAULT')
 
     final_layer = list(model.heads.children())[-1]
 

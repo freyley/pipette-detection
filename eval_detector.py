@@ -11,11 +11,12 @@ from train_detector import get_transform_for_model
 @click.option('--model-name', default='effnet1', help='Model to work with')
 @click.option('--difficulty', default=0.6, help='JIT difficulty')
 @click.option('--length', default=12, help="number of iterations")
-def eval_model(model_name, difficulty, length):
+@click.option('--size', default=None, help="model size - m or l for effnet, b16, l16, l32 for vt")
+def eval_model(model_name, difficulty, length, size):
     if 'effnet' in model_name:
-        model = get_effnet_detector()
+        model = get_effnet_detector(size=size)
     elif 'vt' in model_name:
-        model = get_vt_detector()
+        model = get_vt_detector(size=size)
 
     model_loc = f'weights/{model_name}.pth'
     model = load_model_weights(model, model_loc)
