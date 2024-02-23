@@ -69,6 +69,22 @@ def display_losses(losses):
     plt.show()
 
 
+def get_transform_for_model(model_name: str):
+    if 'effnet' in model_name:
+        return transforms.Compose([
+            # transforms.Grayscale(),  # Converts to grayscale # not doing that anymore
+            transforms.Resize((500, 500)),  # Ensures image is 500x500
+            transforms.ToTensor(),  # Converts to tensor
+        ])
+    elif 'vt' in model_name:
+        return transforms.Compose([
+            transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels, VTs don't support 500x500
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+    else:
+        raise ValueError("Unknown model! vt or effnet only so far!")
+
 
 @click.command()
 @click.option('--batch-size', default=10, help='Batch size')
@@ -82,24 +98,13 @@ def display_losses(losses):
 def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained):
     if 'effnet' in model_name:
         model = get_effnet_detector(no_pretrained)
-        transform = transforms.Compose([
-            # transforms.Grayscale(),  # Converts to grayscale # not doing that anymore
-            transforms.Resize((500, 500)),  # Ensures image is 500x500
-            transforms.ToTensor(),  # Converts to tensor
-        ])
-
     elif 'vt' in model_name:
         model = get_vt_detector(no_pretrained)
-        transform = transforms.Compose([
-            transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels, VTs don't support 500x500
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
     else:
         print("Unknown model! vt or effnet only so far!")
         import sys
         sys.exit()
-
+    transform = get_transform_for_model(model_name)
     model_loc = f'weights/{model_name}.pth'
     model = load_model_weights(model, model_loc)
 
