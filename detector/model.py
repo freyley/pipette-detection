@@ -1,10 +1,7 @@
-import torch
-import torch.nn as nn
 import os
-from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image
+import ssl
 
+import certifi
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -38,8 +35,6 @@ class Detector(nn.Module):
         out = self.fc2(out)
         return out
 
-import ssl
-import certifi
 
 ssl._create_default_https_context = ssl._create_unverified_context
 ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=certifi.where())
@@ -48,12 +43,16 @@ ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=ce
 def get_detector():
     return Detector()
 
+
 def get_effnet_detector(no_pretrained=False, size=None):
     # Load the pretrained model
     if size is None or size in ('medium', 'm'):
         modelClass = efficientnet_v2_m
     elif size in ('large', 'l'):
         modelClass = efficientnet_v2_l
+    else:
+        raise ValueError("Invalid size")
+
     if no_pretrained:
         model = modelClass()
     else:
@@ -70,6 +69,7 @@ def get_effnet_detector(no_pretrained=False, size=None):
     model.get_last_layer = lambda: model.classifier[1]
     return model
 
+
 def get_vt_detector(no_pretrained=False, size=None):
     if size is None or size in ('b16', 'b_16'):
         modelClass = vit_b_16
@@ -77,6 +77,8 @@ def get_vt_detector(no_pretrained=False, size=None):
         modelClass = vit_l_16
     elif size in ('l32', 'l_32'):
         modelClass = vit_l_32
+    else:
+        raise ValueError("Invalid size")
 
     if no_pretrained:
         model = modelClass()
@@ -90,6 +92,7 @@ def get_vt_detector(no_pretrained=False, size=None):
     model.get_last_layer = lambda: model.heads[-1]
     return model
 
+
 def load_model_weights(model, filename):
     if os.path.isfile(filename):
         model.load_state_dict(torch.load(filename))
@@ -98,6 +101,6 @@ def load_model_weights(model, filename):
         print("No weights file found.")
     return model
 
+
 def save_model_weights(model, filename):
     torch.save(model.state_dict(), filename)
-

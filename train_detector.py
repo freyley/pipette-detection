@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+import click
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from tqdm import tqdm
+
+from detector.model import get_effnet_detector, get_vt_detector, load_model_weights, save_model_weights
+
+
 # 1. find better arg parse for python - click?
 # 2. move the model into an efficientnet model file
 # 3. training script which saves weights to a file
@@ -7,15 +18,7 @@
 #       best loss gets saved
 #       change learning rate as loss changes
 # 4.  show loss on a log scale
-from detector.model import get_effnet_detector, get_vt_detector, load_model_weights, save_model_weights
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-import click
-import os
-from torchvision import transforms
+
 
 def __train(model, loader, criterion, optimizer, device):
     model.train()  # Set the model to training mode
@@ -40,6 +43,7 @@ def __train(model, loader, criterion, optimizer, device):
         count += 1  # Increment count for each batch
     return running_loss / count
 
+
 def get_optimizer(loss, model, frozen=False, no_pretrained=False):
     if frozen:
         default_lr = 0
@@ -50,12 +54,18 @@ def get_optimizer(loss, model, frozen=False, no_pretrained=False):
     else:
         lr = 1e-5
     if no_pretrained:
-        optimizer = torch.optim.Adam(model.parameters(),lr=lr)
+        return torch.optim.Adam(model.parameters(), lr=lr)
     else:
-        optimizer = torch.optim.Adam([
-            {'params': model.get_last_layer().parameters(), 'lr': lr}, # Higher learning rate for the new output layer
-        ], lr=default_lr)  # Default learning rate, in case there are parameters not included in any group
-    return optimizer
+        return torch.optim.Adam(
+            [
+                {
+                    'params': model.get_last_layer().parameters(),
+                    'lr': lr,
+                },  # Higher learning rate for the new output layer
+            ],
+            lr=default_lr,
+        )
+
 
 def display_losses(losses):
     plt.figure(figsize=(10, 6))  # Set the figure size
@@ -102,9 +112,7 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, f
     elif 'vt' in model_name:
         model = get_vt_detector(no_pretrained, size)
     else:
-        print("Unknown model! vt or effnet only so far!")
-        import sys
-        sys.exit()
+        raise ValueError("Unknown model! vt or effnet only so far!")
     transform = get_transform_for_model(model_name)
     model_loc = f'weights/{model_name}.pth'
     model = load_model_weights(model, model_loc)
@@ -136,6 +144,7 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, f
     save_model_weights(model, model_loc)
 
     display_losses(losses)
+
 
 if __name__ == '__main__':
     train()
