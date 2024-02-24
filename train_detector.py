@@ -106,7 +106,8 @@ def get_transform_for_model(model_name: str):
 @click.option('--frozen', is_flag=True, help="Freeze early layers")
 @click.option('--no-pretrained', is_flag=True, help="Don't use pretrained weights")
 @click.option('--size', default=None, help="model size - m or l for effnet, b16, l16, l32 for vt")
-def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained, size):
+@click.option('--no-display', is_flag=True, help="Don't display the loss graph")
+def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained, size, no_display):
     if 'effnet' in model_name:
         model = get_effnet_detector(no_pretrained, size)
     elif 'vt' in model_name:
@@ -143,7 +144,8 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, f
 
     save_model_weights(model, model_loc)
 
-    display_losses(losses)
+    if not no_display:
+        display_losses(losses)
 
 
 if __name__ == '__main__':
