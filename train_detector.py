@@ -51,8 +51,10 @@ def get_optimizer(loss, model, frozen=False, no_pretrained=False):
         default_lr = 1e-7
     if loss > 1000:
         lr = 1e-3
-    else:
+    elif loss > 100:
         lr = 1e-5
+    else:
+        lr = 1e-7
     if no_pretrained:
         return torch.optim.Adam(model.parameters(), lr=lr)
     else:
