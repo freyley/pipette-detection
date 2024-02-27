@@ -8,7 +8,13 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
 
-from detector.model import get_effnet_detector, get_vt_detector, load_model_weights, save_model_weights
+from detector.model import (
+    get_effnet_detector,
+    get_maxvit_detector,
+    get_vt_detector,
+    load_model_weights,
+    save_model_weights
+)
 
 
 # 1. find better arg parse for python - click?
@@ -88,7 +94,7 @@ def get_transform_for_model(model_name: str):
             transforms.Resize((500, 500)),  # Ensures image is 500x500
             transforms.ToTensor(),  # Converts to tensor
         ])
-    elif 'vt' in model_name:
+    elif 'vt' in model_name or 'maxvit in model_name':
         return transforms.Compose([
             transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels, VTs don't support 500x500
             transforms.ToTensor(),
@@ -114,6 +120,8 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, f
         model = get_effnet_detector(no_pretrained, size)
     elif 'vt' in model_name:
         model = get_vt_detector(no_pretrained, size)
+    elif 'maxvit' in model_name:
+        model = get_maxvit_detector(no_pretrained) # doesn't have sizes
     else:
         raise ValueError("Unknown model! vt or effnet only so far!")
     transform = get_transform_for_model(model_name)

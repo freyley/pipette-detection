@@ -3,7 +3,7 @@ import click
 import torch
 from torch.utils.data import DataLoader
 
-from detector.model import get_effnet_detector, load_model_weights, get_vt_detector
+from detector.model import get_effnet_detector, load_model_weights, get_vt_detector, get_maxvit_detector
 from train_detector import get_transform_for_model
 
 
@@ -15,6 +15,8 @@ from train_detector import get_transform_for_model
 def eval_model(model_name, difficulty, length, size):
     if 'effnet' in model_name:
         model = get_effnet_detector(size=size)
+    elif 'maxvit' in model_name:
+        model = get_maxvit_detector()
     elif 'vt' in model_name:
         model = get_vt_detector(size=size)
 
