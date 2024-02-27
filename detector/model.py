@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torchvision.models import (
     efficientnet_v2_m, vit_b_16,
     efficientnet_v2_l, vit_l_16, vit_l_32,
+    maxvit_t,
 )
 
 
@@ -92,6 +93,16 @@ def get_vt_detector(no_pretrained=False, size=None):
     model.get_last_layer = lambda: model.heads[-1]
     return model
 
+def get_maxvit_detector(no_pretrained=False):
+    if no_pretrained:
+        model = maxvit_t()
+    else:
+        model = maxvit_t(weights='DEFAULT')
+
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, 3)
+    model.get_last_layer = lambda: model.classifier[-1]
+
+    return model
 
 def load_model_weights(model, filename):
     if os.path.isfile(filename):
