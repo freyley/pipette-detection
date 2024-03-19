@@ -8,18 +8,20 @@ from make_training_data import make_training_data, PipetteTemplate
 
 
 class JITDataset(Dataset):
-    def __init__(self, transform, length=1000, difficulty=0):
+    def __init__(self, transform, length=1000, difficulty=0, shape=(500,500), template='yip_2019_template.npz'):
         self.length = length
         self.difficulty=difficulty
         self.transform = transform
+        self.shape = shape
+        self.template = template
 
     def __len__(self):
         return self.length
 
     def __getitem__(self, idx):
         image, pip_pos = make_training_data(
-            shape=(500, 500),
-            template=PipetteTemplate('yip_2019_template.npz'),
+            shape=self.shape,
+            template=PipetteTemplate(self.template),
             difficulty=self.difficulty,
         )
         # TODO: am I just deconverting and then grayscaling later? wtf?
