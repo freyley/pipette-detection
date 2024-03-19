@@ -171,11 +171,13 @@ if __name__ == '__main__':
     parser.add_argument('--path', default="training", type=str, help='path to store training data')
     parser.add_argument('--size', default=1, type=int, help='number of training examples to generate')
     parser.add_argument('--difficulty', default=0, type=float, help='difficulty (0-1) controls signal/noise ratio, pipette focus and positioning')
+    parser.add_argument('--height', default=500, type=int, help='image height')
+    parser.add_argument('--width', default=500, type=int, help='image width')
     args = parser.parse_args()
 
     training_data_queue = Queue(20)
     training_data_args = {
-        'shape': (500, 500),
+        'shape': (args.height, args.width),
         'template': PipetteTemplate('yip_2019_template.npz'),
         'difficulty': args.difficulty,
     }

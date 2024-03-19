@@ -1,0 +1,13 @@
+1e-5, medium, pretrained, effnet-mid, with frozen middle, difficulty 0.1, ./train_detector.py --frozen --model-name effnet-frozen, eval at 0.15: 4538
+1e-5, medium, pretrained, effnet-mid, with reduced middle, difficulty 0.1, ./train_detector.py --model-name effnet-slow-middle, eval at 0.15: 4916
+1e-5, medium, non-pretrained, effnet, with uniform learning rate, difficulty 0.1, ./train_detector.py --no-pretrained --model-name effnet-scratch, eval at 0.15: 102
+1e-5, b16, pretrained, vision transformer, with frozen middle, difficulty 0.1, ./train_detector.py --model-name vt-frozen --frozen, eval at 0.15: 749
+1e-5, b16, pretrained, vision transformer, with uniform learning rate, difficulty 0.1, ./train_detector.py --model-name vt-uniform, eval at 0.15: 941
+1e-5, b16, non-pretrained, vision transformer, with uniform learning rate, difficulty 0.1, ./train_detector.py --model-name vt-scratch --no-pretrained, eval at 0.15: 1719
+1e-5, large, non-pretrained, effnet, with uniform learning rate, difficulty 0.1, ./train_detector.py --model-name effnet-l-scratch --no-pretrained --size l, eval at 0.15: 178
+1e-5, l32, pretrained, vision transformer, with frozen middle, difficulty 0.1, ./train_detector.py --model-name vt-l32-frozen --size l32, eval at 0.15: 639
+
+
+lower learning rate, medium, scratch, effnet, uniform, diff 0.1, ..., 
+lower learning rate, large, scratch, effnet, uniform, diff 0.1, ..., 
+lower learning rate, large, pretrained, max-vit, frozen, diff 0.1, ...,
