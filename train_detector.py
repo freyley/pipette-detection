@@ -7,13 +7,15 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
+from torch.optim.lr_scheduler import CyclicLR
+import wandb
 
 from detector.model import (
     get_effnet_detector,
     get_maxvit_detector,
     get_vt_detector,
-    load_model_weights,
-    save_model_weights
+    load_checkpoint,
+    save_checkpoint
 )
 
 
@@ -51,6 +53,7 @@ def __train(model, loader, criterion, optimizer, device):
 
 
 def get_optimizer(loss, model, frozen=False, no_pretrained=False):
+    # DEPRECATED - Replacing it with a CyclicLR
     if frozen:
         default_lr = 0
     else:
@@ -96,7 +99,7 @@ def get_transform_for_model(model_name: str):
         ])
     elif 'vt' in model_name or 'maxvit in model_name':
         return transforms.Compose([
-            transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels, VTs don't support 500x500
+            #transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels, VTs don't support 500x500
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
@@ -114,48 +117,57 @@ def get_transform_for_model(model_name: str):
 @click.option('--frozen', is_flag=True, help="Freeze early layers")
 @click.option('--no-pretrained', is_flag=True, help="Don't use pretrained weights")
 @click.option('--size', default=None, help="model size - m or l for effnet, b16, l16, l32 for vt")
-@click.option('--no-display', is_flag=True, help="Don't display the loss graph")
-def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained, size, no_display):
+def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, frozen, no_pretrained, size):
+    wandb_config = {
+
+    }
     if 'effnet' in model_name:
+        wandb_config["architecture"] = "effnet" + size
         model = get_effnet_detector(no_pretrained, size)
     elif 'vt' in model_name:
+        wandb_config["architecture"] = "VT" + size
         model = get_vt_detector(no_pretrained, size)
     elif 'maxvit' in model_name:
+        wandb_config["architecture"] = "MaxVit"
         model = get_maxvit_detector(no_pretrained) # doesn't have sizes
     else:
         raise ValueError("Unknown model! vt or effnet only so far!")
     transform = get_transform_for_model(model_name)
     model_loc = f'weights/{model_name}.pth'
-    model = load_model_weights(model, model_loc)
 
     from detector.loader import JITDataset, FileDataset
     if train_jit:
-        dataset = JITDataset(transform, length=100, difficulty=difficulty)
+        wandb_config["dataset"] = "JIT"
+        dataset = JITDataset(transform, length=100, difficulty=difficulty, shape=(224, 224))
     else:
+        wandb_config["dataset"] = "Files"
         dataset = FileDataset(img_dir=training_dir, transform=transform)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     criterion = nn.MSELoss()
-    # start with a low learning rate optimizer because we don't know how far we are
-    # in training
-    optimizer = get_optimizer(1, model, frozen=frozen, no_pretrained=no_pretrained)
+
+    lr = 1e-4
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = CyclicLR(optimizer, base_lr=1e-4, max_lr=0.01, step_size_up=2000, mode='triangular',
+                         cycle_momentum=False)
+
+    # get the optimizer, scheduler, and model data from the checkpoint
+    epoch = load_checkpoint(model, optimizer, scheduler, model_loc)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
-    losses = []
+    wandb_config['lr'] = lr
+    wandb_config['epochs'] = epochs
 
-    for epoch in tqdm(range(epochs)):
-        loss = __train(model, loader, criterion, optimizer, device)
-        losses.append(loss)
-        # probably don't need to do this _every_ time...
-        optimizer = get_optimizer(loss, model, frozen=frozen, no_pretrained=no_pretrained)
+    with wandb.init(project="pipette-detection-"+model_name, config=wandb_config):
 
-        # checkpoint frequently on big training runs
-        if epochs > 500 and epoch % 100 == 0:
-            save_model_weights(model, model_loc)
+        for epoch in tqdm(range(epochs)):
+            loss = __train(model, loader, criterion, optimizer, device)
+            wandb.log({"loss": loss})
 
-    save_model_weights(model, model_loc)
+            # checkpoint frequently on big training runs
+            if epochs > 500 and epoch % 100 == 0:
+                save_checkpoint(model, optimizer, scheduler, model_loc)
 
-    if not no_display:
-        display_losses(losses)
+    save_checkpoint(model, optimizer, scheduler, model_loc)
 
 
 if __name__ == '__main__':

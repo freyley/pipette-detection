@@ -8,7 +8,9 @@ from make_training_data import make_training_data, PipetteTemplate
 
 
 class JITDataset(Dataset):
-    def __init__(self, transform, length=1000, difficulty=0, shape=(500,500), template='yip_2019_template.npz'):
+    def __init__(self, transform, length=1000, difficulty=0, shape=None, template='yip_2019_template.npz'):
+        if shape is None:
+            shape = (500,500)
         self.length = length
         self.difficulty=difficulty
         self.transform = transform

@@ -18,3 +18,4 @@ dependencies:
     - torchvision==0.17.0
     - pillow=10.2.0
     - click
+    - wandb
