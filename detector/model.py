@@ -106,7 +106,8 @@ def get_maxvit_detector(no_pretrained=False):
 
 def load_model_weights(model, filename):
     if os.path.isfile(filename):
-        model.load_state_dict(torch.load(filename))
+        map_location = 'cuda' if torch.cuda.is_available() else 'cpu'
+        model.load_state_dict(torch.load(filename, map_location=map_location))
         print("Loaded model weights from:", filename)
     else:
         print("No weights file found.")
