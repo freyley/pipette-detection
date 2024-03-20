@@ -11,3 +11,4 @@
 lower learning rate, medium, scratch, effnet, uniform, diff 0.1, ..., 
 lower learning rate, large, scratch, effnet, uniform, diff 0.1, ..., 
 lower learning rate, large, pretrained, max-vit, frozen, diff 0.1, ...,
+cycliclr, l32, non-pretrained, vision transformer, cyclic lr, difficulty varying,  "while true; do randomFloat=$(echo "scale=2; $RANDOM / 32767 * 0.2" | bc); ./train_detector.py --train-jit --difficulty $RANDOM --model-name vt32 --no-pretrained --size l32; done"
