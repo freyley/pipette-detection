@@ -28,7 +28,7 @@ from detector.model import (
 # 4.  show loss on a log scale
 
 
-def __train(model, loader, criterion, optimizer, device):
+def __train(model, loader, criterion, optimizer, scheduler, device):
     model.train()  # Set the model to training mode
 
     running_loss = 0.0
@@ -46,6 +46,7 @@ def __train(model, loader, criterion, optimizer, device):
         # Backward pass and optimize
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         running_loss += loss.item()
         count += 1  # Increment count for each batch
@@ -160,7 +161,7 @@ def train(batch_size, training_dir, train_jit, difficulty, epochs, model_name, f
     with wandb.init(project="pipette-detection-"+model_name, config=wandb_config):
 
         for epoch in tqdm(range(epochs)):
-            loss = __train(model, loader, criterion, optimizer, device)
+            loss = __train(model, loader, criterion, optimizer, scheduler, device)
             wandb.log({"loss": loss})
 
             # checkpoint frequently on big training runs
